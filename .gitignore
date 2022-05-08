@@ -1,0 +1,3 @@
+build/*
+mshuff.egg-info/*
+__pycache__/*
