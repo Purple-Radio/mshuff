@@ -22,7 +22,6 @@ from . import api
 from . import util
 from . import playlist
 
-
 def parse_args():
     """Parse the arguments passed to the script."""
     parser = argparse.ArgumentParser(description="Shuffle for the libretime API.")
@@ -47,22 +46,6 @@ def parse_args():
 
     return args
 
-def get_config(show):
-    """Process config for target show."""
-    try:
-        return api.query_json(show["genre"])
-    except ValueError:
-        logging.error("Show %s contains no valid json in the genre field", show["name"])
-        sys.exit()
-
-def get_bulletin(is_bulletin, files):
-    """Generate bulletin intro."""
-    if is_bulletin:
-        newest = api.get_newest(files, track_type="BULLETIN", lim=24)
-        if newest:
-            return [api.get_where(files, track_title="Bulletin Intro")[0], newest]
-    return []
-
 def format_content(position, file, playlist_url):
     """Format a playlist content payload from a file object."""
     return {
@@ -78,60 +61,52 @@ def format_content(position, file, playlist_url):
             "file": file["item_url"]
             }
 
-def set_playlist(session, url, old_list, new_list):
-    """Write new playlist content."""
-    old_list = sorted(old_list, key = lambda x : x["position"])
-    for old, new in zip_longest(old_list, new_list):
-        if old and new:
-            session.patch(old["item_url"], new)
-        elif old and not new:
-            session.delete(old["item_url"])
-        else:
-            session.post(api.make_https(url, "/api/v2/playlist-contents/"), new)
-    session.patch(new_list[0]["playlist"],
-            {"length": str(playlist.get_runtime(new_list, final=True))})
-
 def main():
     """Main script body."""
     args = parse_args()
     util.setup_logging()
 
-    s = api.open_session(args.c)
+    session = api.Session(args.u)
+    session.auth = tuple(args.c)
+    session.headers.update({"User-agent":"Mozilla/5.0"})
 
     logging.info("Requesting show info from %s.", args.u)
-    show = api.query_url(s, api.make_https(args.u, "/api/live-info-v2"), f"shows.next.{args.n}")
-    playlist_id = api.get_url(s, api.make_https(args.u, "/api/v2/shows"),
-            id=show["id"])[0]["autoplaylist"]
+    show = api.query_json(session.get("/api/live-info-v2").content, f"shows.next.{args.n}")
+    playlist_id = next(session.get_where("/api/v2/shows", id=show["id"]))["autoplaylist"]
 
     logging.info("Reading show config.")
-    config = get_config(show)
+    try:
+        config = api.query_json(show["genre"])
+    except ValueError:
+        logging.error("Show %s contains no valid json in the genre field", show["name"])
+        sys.exit()
 
-    logging.info("Requesting file info from %s.", args.u)
-    files = api.query_url(s, api.make_https(args.u, "/api/v2/files"))
-
-    logging.info("Processing bulletin.")
-    bulletin = get_bulletin(config["bulletin"], files)
+    bulletin = []
+    if config["bulletin"]:
+        logging.info("Processing Bulletin")
+        new = next(session.get_byage("/api/v2/files", track_type="BULLETIN"))
+        if new:
+            bulletin = [next(session.get_where("/api/v2/files", track_title="Bulletin Intro")), new]
 
     logging.info("Pooling valid tracks and jingles.")
-    tracks = api.get_where(files, track_type="SONG",
-            key=lambda x : util.any_common(config["tracks"], x["mood"]))
-
-    sweeps = api.get_where(files, track_type="SWEEP",
-            key=lambda x : util.any_common(config["sweepers"], x["mood"]))
+    k = lambda x, a : util.common_keys(x, config[a])
+    tracks = session.get_where("/api/v2/files", track_type="SONG", key = lambda x : k(x, "tracks"))
+    sweeps = session.get_where("/api/v2/files", track_type="SWEEP", key = lambda x : k(x, "sweeps"))
 
     logging.info("Fitting to length.")
+    tracks, sweeps = list(tracks), list(sweeps)
     length = util.parse_delta(show["ends"], show["starts"]) - playlist.get_runtime(bulletin)
+
     playlist.weighted_shuffle(tracks, lambda x : util.time_since(x["lptime"]))
     tracks = playlist.fit_runtime(tracks, length)
+
     sweeps = playlist.fit_runtime(sweeps, length - playlist.get_runtime(tracks), under=False)
 
     logging.info("Shuffling.")
     playlist.grouped_shuffle(tracks, "artist_name")
-    new_list = bulletin + util.even_merge(sweeps, tracks)
 
     logging.info("Querying existing content.")
-    old_list = api.get_url(s, api.make_https(args.u, "/api/v2/playlist-contents/"),
-            playlist = playlist_id)
+    old_list = session.get_where("/api/v2/playlist-contents/", playlist = playlist_id)
 
     new_list = bulletin + util.even_merge(sweeps, tracks)
     for i, item in enumerate(new_list):
@@ -139,7 +114,16 @@ def main():
 
     logging.info("Updating with %s of new content.", playlist.get_runtime(new_list))
 
-    set_playlist(s, args.u, old_list, new_list)
+    old_list = sorted(old_list, key = lambda x : x["position"])
+    for old, new in zip_longest(old_list, new_list):
+        if old and new:
+            session.patch(old["item_url"], new)
+        elif old and not new:
+            session.delete(old["item_url"])
+        else:
+            session.post("/api/v2/playlist-contents/", new)
+
+    session.patch(playlist_id, {"length": str(playlist.get_runtime(new_list, final=True))})
 
 if __name__ == "__main__":
     main()

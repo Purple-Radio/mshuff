@@ -3,7 +3,7 @@ API request handling and processing
 """
 
 from html import unescape
-from urllib.parse import urlunparse
+from urllib.parse import urlparse, urlunparse
 
 import json
 import requests
@@ -11,16 +11,39 @@ import requests
 from . import util
 
 
-def open_session(credentials):
-    """Return a session object with persistent credentials."""
-    session = requests.Session()
-    session.auth = tuple(credentials)
-    session.headers.update({"User-agent":"Mozilla/5.0"})
-    return session
+class Session(requests.Session):
+    """Session object that caches unnecessary requests."""
 
-def make_https(netloc, path):
-    """Return a correctly formatted url string."""
-    return urlunparse(("https", netloc, path, "", "", ""))
+    def __init__(self, root):
+        """Store root url for relative requests."""
+        self._root = root
+        self._cache = {}
+        super().__init__()
+
+    def request(self, method, url, **kwargs):
+        """Interpret incomplete urls as paths relative to the root, cache GET requests."""
+        parsed = urlparse(url)
+        if not all((parsed.scheme, parsed.netloc)):
+            url = urlunparse(("https", self._root, url, "", "", ""))
+
+        if method.upper() == "GET":
+            if not url in self._cache:
+                self._cache[url] = super().request(method, url, **kwargs)
+            return self._cache[url]
+        return super().request(method, url, **kwargs)
+
+    def get_where(self, url, key=bool, **kwargs):
+        """Return items from a GET json response filtered by a key function."""
+        for i in self.get(url).json():
+            if key(i) and all(i[a] == b for a, b in kwargs.items()):
+                yield i
+
+    def get_byage(self, url, lim=24, key=bool, **kwargs):
+        """Wrapper for get_where that returns objects sorted by upload time."""
+        for i in sorted(self.get_where(url, key, **kwargs), key=lambda x : x["utime"]):
+            if util.time_since(i["utime"]) < lim and all:
+                yield i
+        yield None
 
 def query_json(data, path=None):
     """Parse a string/byes into json, interpret a given path."""
@@ -34,29 +57,3 @@ def query_json(data, path=None):
             j = j[i]
     return j
 
-def query_url(session, url, path=None):
-    """Wrapper for query_json that first fetches an API response."""
-    content = session.get(url).content
-    return query_json(content, path)
-
-def get_where(content, key=lambda x : True, **kwargs):
-    """Filter a list of json objects to those that match given key-value pairs."""
-    filtered = []
-    for item in content:
-        if all(item[key] == value for key, value in kwargs.items()) and key(item):
-            filtered.append(item)
-    return filtered
-
-def get_url(session, url, key = lambda x : True, **kwargs):
-    """Wrapper for get_where that first fetches an API response."""
-    content = query_url(session, url)
-    return get_where(content, key = key, **kwargs)
-
-def get_newest(content, lim=24, **kwargs):
-    """Wrapper for get_where that returns the most recently uploaded item."""
-    try:
-        newest = min(get_where(content, **kwargs), key = lambda x : util.time_since(x["utime"]))
-        if util.time_since(newest["utime"]) < lim:
-            return newest
-    except ValueError:
-        return None

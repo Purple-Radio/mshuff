@@ -3,14 +3,14 @@ Functions for manipulating playlists: shuffles, sorts, etc
 """
 
 import random
+
 from datetime import timedelta
 from collections import defaultdict
 
 from . import util
 
-
 def get_runtime(files, final = False):
-    """Calculate the true runtime of a list of file items."""
+    """Calculate the true runtime of an iterable of file items."""
     runtime = timedelta()
     for i in [f for f in files if f is not None]:
         try:
@@ -57,3 +57,4 @@ def grouped_shuffle(files, field, jitter=0.1):
             item["sort"] = offset + i*spacing + random.uniform(-jitter, jitter)
 
     files.sort(key = lambda x : x["sort"])
+

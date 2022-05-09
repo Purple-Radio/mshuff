@@ -1,6 +1,6 @@
 {
   "tracks": {
-    "mood": "daytime evening",
+    "mood": "daytime;evening",
     "genre": "jazz"
   },
   "sweeps": {
