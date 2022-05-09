@@ -1,0 +1,10 @@
+{
+  "tracks": {
+    "mood": "daytime evening",
+    "genre": "jazz"
+  },
+  "sweeps": {
+    "mood": "generic"
+  },
+  "bulletin": true
+}
