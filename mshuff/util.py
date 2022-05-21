@@ -5,34 +5,15 @@ Miscellaneous helper functions
 from string import punctuation
 from datetime import datetime
 
+import os
 import logging
 import sys
 
 TIME_FMTS = "%H:%M", "%H:%M:%S", "%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d %H:%M:%S"
 
-def get_words(string_a):
-    """Clean punctuation and make a string lowercase, then split into words."""
-    return string_a.translate(str.maketrans('', '', punctuation)).lower().split(";")
-
-def common_words(string_a, string_b):
-    """Return true if strings contain common words."""
-    words_a, words_b = get_words(string_a), get_words(string_b)
-    try:
-        return len(set(words_a).intersection(words_b)) > 0
-    except TypeError:
-        return False
-
-def common_keys(dict_a, dict_b):
-    """Return true if any matching keys contain common words."""
-    dict_a, dict_b = strip_null(dict_a), strip_null(dict_b)
-    for i in set(dict_a).intersection(set(dict_b)):
-        if common_words(dict_a[i], dict_b[i]):
-            return True
-    return False
-
-def strip_null(dict_a):
-    """Strip key:value pairs with null values from dictionary."""
-    return {a:b for a, b in dict_a.items() if b}
+def create_dir(directory):
+    """Alias to make directories."""
+    os.makedirs(directory, exist_ok=True)
 
 def even_merge(list_a, list_b):
     """Merge two lists together such that the elements are evenly spaced."""

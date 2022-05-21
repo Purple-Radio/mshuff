@@ -3,11 +3,44 @@ Functions for manipulating playlists: shuffles, sorts, etc
 """
 
 import random
+import os
+import json
 
 from datetime import timedelta
-from collections import defaultdict
+from collections import defaultdict, UserDict, deque
+
+from .settings import CONF_DIR
 
 from . import util
+from . import settings
+
+def load_config(name):
+    """Load playlist config from file."""
+    with open(os.path.join(CONF_DIR, f"{name}.json"), "r") as f:
+        data = json.load(f)
+    if "random" in data:
+        return load_config(random.choice(data["random"]))
+    return data
+
+def get_content(config, tracks):
+    """Yield from an array based on a playlist config."""
+
+    def filter_content(category, tracks):
+        """Filter based on an individual category."""
+        eq = lambda a, b : a == b if config["exact"] else (a in b or b in a)
+        queue, fields = deque(tracks), category["fields"]
+        while len(queue) > 1:
+            if all(eq(queue[0][a], b) if queue[0][a] else False for a, b in fields.items()):
+                yield queue[0]
+                queue.append(queue.popleft())
+            else:
+                queue.popleft()
+        raise KeyError(f"No content found matching {config}")
+
+    generators = [filter_content(tracks, i) for i in config["content"]]
+    while True:
+        yield next(random.choices(generators, k=1,
+            weights=[i["weight"] for i in config["content"]])[0])
 
 def get_runtime(files, final = False):
     """Calculate the true runtime of an iterable of file items."""
@@ -23,16 +56,12 @@ def get_runtime(files, final = False):
         return runtime - timedelta(seconds=max(0, len(files)))
     return runtime - timedelta(seconds=max(0, len(files)-1))
 
-def fit_runtime(files, target, under=True):
-    """Trim a list of files just under/over a target length."""
-    while get_runtime(files) < target:
-        files = files+files
-    for i, _ in enumerate(files):
-        if under and get_runtime(files[0:i+1]) > target:
-            files[i] = None
-        if get_runtime(files[0:i+1]) > target:
-            break
-    return [i for i in files[0:i+1] if i is not None]
+def fit_runtime(file_gen, target):
+    """Draw from a generator of files to exceed a target length."""
+    c = []
+    while get_runtime(c) < target:
+        c.append(next(file_gen))
+    return c
 
 def weighted_shuffle(files, key = lambda x : x, x_lim = 4, y_lim = 4):
     """Pseudoshuffles a list of dictionaries prioritising weighted items."""
@@ -57,4 +86,3 @@ def grouped_shuffle(files, field, jitter=0.1):
             item["sort"] = offset + i*spacing + random.uniform(-jitter, jitter)
 
     files.sort(key = lambda x : x["sort"])
-

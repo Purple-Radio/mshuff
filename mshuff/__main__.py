@@ -18,6 +18,9 @@ import sys
 
 from itertools import zip_longest
 
+from .settings import __version__, CONF_DIR
+
+from . import settings
 from . import api
 from . import util
 from . import playlist
@@ -26,10 +29,10 @@ def parse_args():
     """Parse the arguments passed to the script."""
     parser = argparse.ArgumentParser(description="Shuffle for the libretime API.")
 
-    parser.add_argument("-u", metavar="url", type=str, required=True,
+    parser.add_argument("-u", metavar="url", type=str,
             help="Base URL of the target libretime instance, no scheme and no path.")
 
-    parser.add_argument("-c", metavar=("user", "password"), nargs=2, type=str, required=True,
+    parser.add_argument("-c", metavar=("user", "password"), nargs=2, type=str,
             help="Username and password of an account with API read/write access.")
 
     parser.add_argument("-n", metavar="int", default=1, type=int,
@@ -38,7 +41,16 @@ def parse_args():
     parser.add_argument("-q", action="store_true",
             help="Quiet mode, suppress output.")
 
+    parser.add_argument("-v", action="store_true",
+            help="Print version.")
+
     args = parser.parse_args()
+
+    if args.v:
+        parser.exit(0, f"mshuff {__version__}\n")
+
+    if not args.c and not args.u:
+        parser.error("-u and -c are required to establish connection.")
 
     if args.q:
         logging.getLogger().disabled = True
@@ -63,44 +75,44 @@ def format_content(position, file, playlist_url):
 
 def main():
     """Main script body."""
-    args = parse_args()
+    util.create_dir(CONF_DIR)
     util.setup_logging()
+    args = parse_args()
 
     session = api.Session(args.u)
     session.auth = tuple(args.c)
     session.headers.update({"User-agent":"Mozilla/5.0"})
 
-    logging.info("Requesting show info from %s.", args.u)
-    show = api.query_json(session.get("/api/live-info-v2").content, f"shows.next.{args.n}")
+    logging.info("Getting show info from %s.", args.u)
+    show = session.get("/api/live-info-vw").json()["shows"]["next"][args.n]
     playlist_id = next(session.get_where("/api/v2/shows", id=show["id"]))["autoplaylist"]
 
     logging.info("Reading show config.")
     try:
-        config = api.query_json(show["genre"])
-    except ValueError:
-        logging.error("Show %s contains no valid json in the genre field", show["name"])
+        config = playlist.load_config(show["genre"])
+    except FileNotFoundError:
+        logging.error("Show %s contains no valid config name in the genre field", show["name"])
         sys.exit()
 
     bulletin = []
-    if config["bulletin"]:
+    if "bulletin" in config and config["bulletin"]:
         logging.info("Processing Bulletin")
         new = next(session.get_byage("/api/v2/files", track_type="BULLETIN"))
         if new:
             bulletin = [next(session.get_where("/api/v2/files", track_title="Bulletin Intro")), new]
 
     logging.info("Pooling valid tracks and jingles.")
-    k = lambda x, a : util.common_keys(x, config[a])
-    tracks = session.get_where("/api/v2/files", track_type="SONG", key = lambda x : k(x, "tracks"))
-    sweeps = session.get_where("/api/v2/files", track_type="SWEEP", key = lambda x : k(x, "sweeps"))
+    files = session.get("/api/v2/files").json()
+    playlist.weighted_shuffle(files, lambda x : util.time_since(x["lptime"]))
+    pool = playlist.get_content(config, files)
 
-    logging.info("Fitting to length.")
-    tracks, sweeps = list(tracks), list(sweeps)
+    logging.info("Fitting to length")
     length = util.parse_delta(show["ends"], show["starts"]) - playlist.get_runtime(bulletin)
+    pool = playlist.fit_runtime(pool, length)
 
-    playlist.weighted_shuffle(tracks, lambda x : util.time_since(x["lptime"]))
-    tracks = playlist.fit_runtime(tracks, length)
-
-    sweeps = playlist.fit_runtime(sweeps, length - playlist.get_runtime(tracks), under=False)
+    logging.info("Separating out sweepers")
+    tracks = [i for i in pool if i["track_type"] == "SONG"]
+    sweeps = [i for i in pool if i["track_type"] == "SWEEP"]
 
     logging.info("Shuffling.")
     playlist.grouped_shuffle(tracks, "artist_name")

@@ -10,7 +10,6 @@ import requests
 
 from . import util
 
-
 class Session(requests.Session):
     """Session object that caches unnecessary requests."""
 
@@ -44,16 +43,4 @@ class Session(requests.Session):
             if util.time_since(i["utime"]) < lim and all:
                 yield i
         yield None
-
-def query_json(data, path=None):
-    """Parse a string/byes into json, interpret a given path."""
-    try:
-        j = json.loads(data)
-    except ValueError:
-        j = json.loads(unescape(data))
-    if path:
-        for i in path.split("."):
-            i = int(i) if i.isnumeric() else i
-            j = j[i]
-    return j
 
