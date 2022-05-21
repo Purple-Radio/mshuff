@@ -5,6 +5,8 @@ API request handling and processing
 from html import unescape
 from urllib.parse import urlparse, urlunparse
 
+import sys
+import logging
 import json
 import requests
 
@@ -25,11 +27,18 @@ class Session(requests.Session):
         if not all((parsed.scheme, parsed.netloc)):
             url = urlunparse(("https", self._root, url, "", "", ""))
 
-        if method.upper() == "GET":
-            if not url in self._cache:
-                self._cache[url] = super().request(method, url, **kwargs)
-            return self._cache[url]
-        return super().request(method, url, **kwargs)
+        try:
+            if method.upper() == "GET":
+                if not url in self._cache:
+                    self._cache[url] = super().request(method, url, **kwargs)
+                response = self._cache[url]
+            response = super().request(method, url, **kwargs)
+            response.raise_for_status()
+        except (requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as error:
+            logging.error(error)
+            sys.exit(1)
+
+        return response
 
     def get_where(self, url, key=bool, **kwargs):
         """Return items from a GET json response filtered by a key function."""

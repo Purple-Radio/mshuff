@@ -84,7 +84,7 @@ def main():
     session.headers.update({"User-agent":"Mozilla/5.0"})
 
     logging.info("Getting show info from %s.", args.u)
-    show = session.get("/api/live-info-vw").json()["shows"]["next"][args.n]
+    show = session.get("/api/live-info-v2").json()["shows"]["next"][args.n]
     playlist_id = next(session.get_where("/api/v2/shows", id=show["id"]))["autoplaylist"]
 
     logging.info("Reading show config.")
