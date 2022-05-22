@@ -1,0 +1,31 @@
+{
+    "name": "Throwback Pre's",
+    "description": "Merge of 'Party Throwbacks' and 'Pre's' compiled by the 2021-22 music team",
+    "bulletin": true,
+    "content": [
+        {
+            "weight": 3,
+            "exact": true,
+            "fields": {
+              "track_type": "SONG",
+              "genre": "party_throwbacks"
+            }
+        },
+        {
+            "weight": 3,
+            "exact": true,
+            "fields": {
+              "track_type": "SONG",
+              "genre": "pres"
+            }
+        },
+        {
+            "weight": 1,
+            "exact": true,
+            "fields": {
+              "track_type": "SWEEP",
+              "genre": "general"
+            }
+        }
+    ]
+} 

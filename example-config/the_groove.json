@@ -1,0 +1,23 @@
+{
+    "name": "The Groove",
+    "description": "A collection of groovy songs chosen by Isla from the 2021-22 Purple Radio Playlists Team.",
+    "bulletin": true,
+    "content": [
+        {
+            "weight": 5,
+            "exact": true,
+            "fields": {
+              "track_type": "SONG",
+              "genre": "the_groove"
+            }
+        },
+        {
+            "weight": 1,
+            "exact": true,
+            "fields": {
+              "track_type": "SWEEP",
+              "genre": "general"
+            }
+        }
+    ]
+} 

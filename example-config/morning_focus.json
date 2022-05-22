@@ -1,0 +1,31 @@
+{
+    "name": "Morning Focus",
+    "description": "Merge of 'Morning' by Freya Barker and 'Indie Chill' compiled by the 2021-22 music team",
+    "bulletin": true,
+    "content": [
+        {
+            "weight": 3,
+            "exact": true,
+            "fields": {
+              "track_type": "SONG",
+              "genre": "morning"
+            }
+        },
+        {
+            "weight": 3,
+            "exact": true,
+            "fields": {
+              "track_type": "SONG",
+              "genre": "indie_chill"
+            }
+        },
+        {
+            "weight": 1,
+            "exact": true,
+            "fields": {
+              "track_type": "SWEEP",
+              "genre": "general"
+            }
+        }
+    ]
+} 

@@ -1,0 +1,31 @@
+{
+    "name": "Expansions",
+    "description": "Merge of 'The Groove' and 'Funk, Soul, Rnb' compiled by the 2021-22 music team",
+    "bulletin": true,
+    "content": [
+        {
+            "weight": 3,
+            "exact": true,
+            "fields": {
+              "track_type": "SONG",
+              "genre": "the_groove"
+            }
+        },
+        {
+            "weight": 3,
+            "exact": true,
+            "fields": {
+              "track_type": "SONG",
+              "genre": "funk_soul_rnb"
+            }
+        },
+        {
+            "weight": 1,
+            "exact": true,
+            "fields": {
+              "track_type": "SWEEP",
+              "genre": "general"
+            }
+        }
+    ]
+} 

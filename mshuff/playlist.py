@@ -35,7 +35,8 @@ def get_content(config, tracks):
                 queue.append(queue.popleft())
             else:
                 queue.popleft()
-        raise KeyError(f"No content found matching {config}")
+        logging.error(f"No content found matching {config}")
+        sys.exit(1)
 
     generators = [filter_content(tracks, i) for i in config["content"]]
     while True:

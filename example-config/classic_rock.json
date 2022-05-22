@@ -1,0 +1,23 @@
+{
+    "name": "Classic Rock",
+    "description": "A collection of classic rock songs selected by Bomin and Isla from the 2021-22 Purple Radio Playlist Team.",
+    "bulletin": true,
+    "content": [
+        {
+            "weight": 5,
+            "exact": true,
+            "fields": {
+              "track_type": "SONG",
+              "genre": "classic_rock"
+            }
+        },
+        {
+            "weight": 1,
+            "exact": true,
+            "fields": {
+              "track_type": "SWEEP",
+              "genre": "general"
+            }
+        }
+    ]
+} 
