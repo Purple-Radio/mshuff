@@ -110,9 +110,12 @@ def main():
     length = util.parse_delta(show["ends"], show["starts"]) - playlist.get_runtime(bulletin)
     pool = playlist.fit_runtime(pool, length)
 
-    logging.info("Separating out sweepers")
+    logging.info("Separating out sweepers.")
     tracks = [i for i in pool if i["track_type"] == "SONG"]
     sweeps = [i for i in pool if i["track_type"] == "SWEEP"]
+
+    if len(sweeps) > len(tracks)//2:
+        logging.warning("Density of sweepers is greater than 1 per 2 tracks, check config.")
 
     logging.info("Shuffling.")
     playlist.grouped_shuffle(tracks, "artist_name")

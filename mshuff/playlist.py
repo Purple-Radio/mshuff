@@ -25,9 +25,9 @@ def load_config(name):
 def get_content(config, tracks):
     """Yield from an array based on a playlist config."""
 
-    def filter_content(category, tracks):
+    def filter_content(tracks, category):
         """Filter based on an individual category."""
-        eq = lambda a, b : a == b if config["exact"] else (a in b or b in a)
+        eq = lambda a, b : a == b if category["exact"] else (a in b or b in a)
         queue, fields = deque(tracks), category["fields"]
         while len(queue) > 1:
             if all(eq(queue[0][a], b) if queue[0][a] else False for a, b in fields.items()):
