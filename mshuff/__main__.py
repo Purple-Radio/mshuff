@@ -85,11 +85,14 @@ def main():
 
     logging.info("Getting show info from %s.", args.u)
     show = session.get("/api/live-info-v2").json()["shows"]["next"][args.n]
-    playlist_id = next(session.get_where("/api/v2/shows", id=show["id"]))["autoplaylist"]
+
+    show_info = next(session.get_where("/api/v2/shows", id=show["id"]))
+    show_id, playlist_id = show_info["item_url"], show_info["autoplaylist"]
 
     logging.info("Reading show config.")
     try:
-        config = playlist.load_config(show["genre"])
+        rewrite = show["genre"].startswith("r:")
+        config = playlist.load_config(show["genre"].split(":")[-1])
     except FileNotFoundError:
         logging.error("Show %s contains no valid config name in the genre field", show["name"])
         sys.exit()
@@ -138,7 +141,12 @@ def main():
         else:
             session.post("/api/v2/playlist-contents/", new)
 
+    logging.info("Updating playlist item metadata.")
     session.patch(playlist_id, {"length": str(playlist.get_runtime(new_list, final=True))})
+    if rewrite and "name" in config:
+        session.patch(show_id, {"name": config["name"]})
+    if rewrite and "description" in config:
+        session.patch(show_id, {"description": config["description"]})
 
 if __name__ == "__main__":
     main()
