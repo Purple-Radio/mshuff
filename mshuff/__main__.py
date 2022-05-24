@@ -97,6 +97,8 @@ def main():
         logging.error("Show %s contains no valid config name in the genre field", show["name"])
         sys.exit()
 
+    logging.info("Writing playlist %s to show %s", config["name"], show["name"])
+
     bulletin = []
     if "bulletin" in config and config["bulletin"]:
         logging.info("Processing Bulletin")
