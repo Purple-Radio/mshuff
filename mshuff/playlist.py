@@ -3,8 +3,10 @@ Functions for manipulating playlists: shuffles, sorts, etc
 """
 
 import random
+import sys
 import os
 import json
+import logging
 
 from datetime import timedelta
 from collections import defaultdict, UserDict, deque
@@ -24,24 +26,23 @@ def load_config(name):
 
 def get_content(config, tracks):
     """Yield from an array based on a playlist config."""
+    categories = [deque() for i in config["content"]]
+    for track in tracks:
+        for i, cat in enumerate(config["content"]):
+            eq = lambda a, b : a==b if cat["exact"] else (a in b or b in a)
+            if all(eq(track[a], b) if track[a] else False for a, b in cat["fields"].items()):
+                categories[i].append(track)
+                continue
 
-    def filter_content(tracks, category):
-        """Filter based on an individual category."""
-        eq = lambda a, b : a == b if category["exact"] else (a in b or b in a)
-        queue, fields = deque(tracks), category["fields"]
-        while len(queue) > 1:
-            if all(eq(queue[0][a], b) if queue[0][a] else False for a, b in fields.items()):
-                yield queue[0]
-                queue.append(queue.popleft())
-            else:
-                queue.popleft()
-        logging.error(f"No content found matching {config}")
+    if any(len(i) == 0 for i in categories):
+        logging.error("One or more categories failed to find any content, exiting.")
         sys.exit(1)
 
-    generators = [filter_content(tracks, i) for i in config["content"]]
+    weights = [i["weight"] if "weight" in i else 1 for i in config["content"]]
     while True:
-        yield next(random.choices(generators, k=1,
-            weights=[i["weight"] for i in config["content"]])[0])
+        i = random.choices(categories, k=1, weights=weights)[0]
+        yield i[0]
+        i.rotate(-1)
 
 def get_runtime(files, final = False):
     """Calculate the true runtime of an iterable of file items."""
