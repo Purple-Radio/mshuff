@@ -4,7 +4,7 @@
     "bulletin": true,
     "content": [
         {
-            "weight": 3,
+            "weight": 2,
             "exact": true,
             "fields": {
               "track_type": "SONG",
@@ -12,7 +12,15 @@
             }
         },
         {
-            "weight": 3,
+          "weight": 2,
+          "exact": true,
+          "fields": {
+            "track_type": "SONG",
+            "genre": "throwback_indie"
+          }
+        },
+        {
+            "weight": 2,
             "exact": true,
             "fields": {
               "track_type": "SONG",

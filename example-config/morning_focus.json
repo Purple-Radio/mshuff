@@ -8,7 +8,7 @@
             "exact": true,
             "fields": {
               "track_type": "SONG",
-              "genre": "morning"
+              "mood": "morning"
             }
         },
         {
