@@ -44,7 +44,7 @@ def time_since(timestring, scale=3600):
 
 def setup_logging():
     """Initialise logging module config."""
-    logging.basicConfig(format=("[%(levelname)s\033[0m] "
+    logging.basicConfig(format=("%(asctime)s [%(levelname)s\033[0m] "
                                 "\033[1;31m%(module)s\033[0m: "
                                 "%(message)s"),
                         level = logging.INFO,

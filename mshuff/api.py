@@ -25,7 +25,7 @@ class Session(requests.Session):
         """Interpret incomplete urls as paths relative to the root, cache GET requests."""
         parsed = urlparse(url)
         if not all((parsed.scheme, parsed.netloc)):
-            url = urlunparse(("https", self._root, url, "", "", ""))
+            url = urlunparse(("http", self._root, url, "", "", ""))
 
         try:
             if method.upper() == "GET":
