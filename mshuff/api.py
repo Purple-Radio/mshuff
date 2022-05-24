@@ -22,23 +22,24 @@ class Session(requests.Session):
         super().__init__()
 
     def request(self, method, url, **kwargs):
-        """Interpret incomplete urls as paths relative to the root, cache GET requests."""
+        """Interpret incomplete urls as paths relative to the root, cache GET requests, retry."""
         parsed = urlparse(url)
         if not all((parsed.scheme, parsed.netloc)):
             url = urlunparse(("http", self._root, url, "", "", ""))
 
-        try:
-            if method.upper() == "GET":
-                if not url in self._cache:
-                    self._cache[url] = super().request(method, url, **kwargs)
-                response = self._cache[url]
-            response = super().request(method, url, **kwargs)
-            response.raise_for_status()
-        except (requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as error:
-            logging.error(error)
-            sys.exit(1)
-
-        return response
+        for i in range(3):
+            try:
+                if method.upper() == "GET":
+                    if not url in self._cache:
+                        self._cache[url] = super().request(method, url, **kwargs)
+                    response = self._cache[url]
+                response = super().request(method, url, **kwargs)
+                response.raise_for_status()
+                return response
+            except (requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as error:
+                if i == 3:
+                    logging.error(error)
+                    sys.exit(1)
 
     def get_where(self, url, key=bool, **kwargs):
         """Return items from a GET json response filtered by a key function."""
