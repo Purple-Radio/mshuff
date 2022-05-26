@@ -32,8 +32,8 @@ def parse_args():
     parser.add_argument("-c", metavar=("user", "password"), nargs=2, type=str,
             help="Username and password of an account with API read/write access.")
 
-    parser.add_argument("-n", metavar="int", default=1, type=int,
-            help="Index to target in upcoming show list.")
+    parser.add_argument("-g", metavar="int", default=1, type=int,
+            help="Hour gap to target in upcoming show list.")
 
     parser.add_argument("-q", action="store_true",
             help="Quiet mode, suppress output.")
@@ -81,10 +81,18 @@ def main():
     session.headers.update({"User-agent":"Mozilla/5.0"})
 
     logging.info("Getting show info from %s.", args.u)
-    show = session.get("/api/live-info-v2").json()["shows"]["next"][args.n]
+    shows = session.get("/api/live-info-v2").json()["shows"]["next"]
+    for i in shows:
+        if abs(util.time_since(i["starts"])) > args.g:
+            show = i
+            break
 
-    show_info = next(session.get_where("/api/v2/shows", id=show["id"]))
-    show_id, playlist_id = show_info["item_url"], show_info["autoplaylist"]
+    try:
+        show_info = next(session.get_where("/api/v2/shows", id=show["id"]))
+        show_id, playlist_id = show_info["item_url"], show_info["autoplaylist"]
+    except ValueError:
+        logging.error("Failed to find a show at the correct gap length")
+        sys.exit(1)
 
     logging.info("Reading show config.")
     try:
